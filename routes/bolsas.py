@@ -5,9 +5,9 @@ import uuid
 
 bolsas_bp = Blueprint('bolsas', __name__)
 
-TIPOS_SANGUE_VALIDOS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+tipos_sangue_validos = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
 
-VALIDADE_POR_SOLUCAO = {
+validade_por_solucao = {
     "ACD": 21,
     "CPD": 21,
     "CPDA-1": 35,
@@ -43,7 +43,7 @@ def validar_bolsa(bolsa):
         if campo not in bolsa or bolsa[campo] == "" or bolsa[campo] is None:
             erros_400.append(campo)
 
-    if bolsa.get("tipo_sangue") not in TIPOS_SANGUE_VALIDOS:
+    if bolsa.get("tipo_sangue") not in tipos_sangue_validos:
         erros_422.append("tipo_sangue invalido. Valores aceitos: A+, A-, B+, B-, AB+, AB-, O+, O-")
 
     for campo in campos_string:
@@ -84,8 +84,8 @@ def validar_atualizacao_bolsa(bolsa):
         if valor is not None and not isinstance(valor, (int, float)):
             erros_422.append(f"{campo} deve ser um número")
 
-    tipo = bolsa.get("tipo_sangue")
-    if tipo is not None and tipo not in TIPOS_SANGUE_VALIDOS:
+    tipo_sangue = bolsa.get("tipo_sangue")
+    if tipo_sangue is not None and tipo_sangue not in tipos_sangue_validos:
         erros_422.append("tipo_sangue invalido. Valores aceitos: A+, A-, B+, B-, AB+, AB-, O+, O-")
 
     quantidade = bolsa.get("quantidade_ml")
@@ -96,13 +96,13 @@ def validar_atualizacao_bolsa(bolsa):
 
 
 def calcular_validade(bolsa):
-    solucao = bolsa["solucao_conservante"]
+    solucao_conservante = bolsa["solucao_conservante"]
 
-    if solucao not in VALIDADE_POR_SOLUCAO:
-        erro = "Solução conservante '" + solucao + "' não reconhecida. Valores aceitos: ACD, CPD, CPDA-1, AS-1, AS-3, AS-5"
+    if solucao_conservante not in validade_por_solucao:
+        erro = "Solução conservante '" + solucao_conservante + "' não reconhecida. Valores aceitos: ACD, CPD, CPDA-1, AS-1, AS-3, AS-5"
         return bolsa, erro
 
-    dias_de_validade = VALIDADE_POR_SOLUCAO[solucao]
+    dias_validade = validade_por_solucao[solucao_conservante]
 
     try:
         data_coleta = datetime.strptime(bolsa["data_coleta"], "%Y-%m-%d")
@@ -113,7 +113,7 @@ def calcular_validade(bolsa):
     if data_coleta > hoje:
         return bolsa, "data_coleta não pode ser uma data futura"
 
-    data_validade = data_coleta + timedelta(days=dias_de_validade)
+    data_validade = data_coleta + timedelta(days=dias_validade)
     bolsa["data_validade"] = data_validade.strftime("%Y-%m-%d")
 
     return bolsa, None
@@ -134,13 +134,13 @@ def get_bolsa(id):
 def get_bolsas():
     bolsas = ler_json('bolsas')
 
-    tipo  = request.args.get('tipo_sangue', '').replace(' ', '+') or None
+    tipo_sangue = request.args.get('tipo_sangue', '').replace(' ', '+') or None
     valida = request.args.get('valida')
 
     resultado = []
 
     for bolsa in bolsas:
-        if tipo and bolsa.get('tipo_sangue') != tipo:
+        if tipo_sangue and bolsa.get('tipo_sangue') != tipo_sangue:
             continue
         if valida is not None:
             data_validade = date.fromisoformat(bolsa.get('data_validade'))
