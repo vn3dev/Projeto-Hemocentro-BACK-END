@@ -20,7 +20,7 @@
 | POST | `/bolsas` | Cria bolsa |
 | PUT | `/bolsas/<id>` | Atualiza bolsa (parcial) |
 | DELETE | `/bolsas/<id>` | Remove bolsa |
-| GET | `/sangue/listar` | *(pendente)* Estoque por tipo |
+| GET | `/visao-geral` | Painel consolidado de estatísticas |
 
 ---
 
@@ -30,6 +30,7 @@
 |------|-------|---------|
 | GET `/doadores` | `sexoDoador` | `?sexoDoador=H` |
 | GET `/doadores` | `tipoSangue` | `?tipoSangue=O` |
+| GET `/doadores` | `fatorRh` | `?fatorRh=%2B` |
 | GET `/doadores` | `aptoParaDoacao` | `?aptoParaDoacao=true` |
 | GET `/bolsas` | `tipo_sangue` | `?tipo_sangue=O%2B` |
 | GET `/bolsas` | `valida` | `?valida=true` |
@@ -51,16 +52,16 @@
 | `dataNascimentoDoador` | string | Sim | `YYYY-MM-DD` |
 | `tipoSangue` | string | Sim | `A`, `B`, `AB`, `O` |
 | `fatorRh` | string | Sim | `"+"` ou `"-"` |
-| `dataUltimaDoacao` | string | Sim | `YYYY-MM-DD` |
-| `quantidadeDoada` | integer | Sim | Positivo, em ml |
-| `localDoacao` | string | Sim | — |
 | `hemoglobinaDoador` | float | Sim | Positivo, em g/dL |
 | `pressaoArterialDoador` | string | Sim | `"120/80"` |
-| `cadastrado` | boolean | Sim | — |
+| `dataUltimaDoacao` | string | Não | `YYYY-MM-DD`; `null` se nunca doou |
+| `quantidadeDoada` | integer | Não | Positivo, em ml |
+| `localDoacao` | string | Não | — |
 | `alergiasDoador` | string | Não | — |
 | `medicamentosDoador` | string | Não | — |
 | `observacoes` | string | Não | — |
 | `id` | — | — | Gerado pelo servidor |
+| `cadastrado` | — | — | Definido pelo servidor (`true`) |
 | `aptoParaDoacao` | — | — | Calculado pelo servidor |
 
 ---
@@ -79,7 +80,29 @@
 
 **Validade por solução:** ACD/CPD → 21d · CPDA-1 → 35d · AS-1/AS-3/AS-5 → 42d
 
-**Aptidão para doação:** Homem → 60 dias · Mulher → 90 dias desde a última doação
+**Aptidão para doação:** Homem → 60 dias · Mulher → 90 dias desde a última doação · sem doação anterior → sempre apto
+
+> **POST /bolsas:** ao criar uma bolsa, o servidor atualiza automaticamente `dataUltimaDoacao` e `aptoParaDoacao` do doador referenciado.
+
+---
+
+## GET /visao-geral
+
+Retorna um painel consolidado. Não aceita query params.
+
+**Campos da resposta:**
+
+| Campo | Descrição |
+|-------|-----------|
+| `por_tipo[]` | Estatísticas para cada um dos 8 tipos (`A+` … `O-`) |
+| `por_tipo[].total_doadores` | Doadores daquele tipo |
+| `por_tipo[].doadores_aptos` | Doadores aptos daquele tipo |
+| `por_tipo[].total_bolsas` | Total de bolsas daquele tipo |
+| `por_tipo[].bolsas_validas` | Bolsas dentro do prazo de validade |
+| `por_tipo[].total_ml_valido` | ml totais nas bolsas válidas |
+| `totais` | Mesmos campos acima para todos os tipos combinados |
+| `ultimos_doadores` | 5 doadores mais recentes (ordem decrescente) |
+| `ultimas_bolsas` | 5 bolsas mais recentes (ordem decrescente) |
 
 ---
 

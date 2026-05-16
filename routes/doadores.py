@@ -18,12 +18,8 @@ campos_obrigatorios = [
     "dataNascimentoDoador",
     "tipoSangue",
     "fatorRh",
-    "dataUltimaDoacao",
-    "quantidadeDoada",
-    "localDoacao",
     "hemoglobinaDoador",
     "pressaoArterialDoador",
-    "cadastrado"
 ]
 
 campos_string = [
@@ -52,32 +48,62 @@ campos_numericos = [
 campos_opcionais = [
     "alergiasDoador",
     "medicamentosDoador",
-    "observacoes"
+    "observacoes",
+    "dataUltimaDoacao",
+    "quantidadeDoada",
+    "localDoacao",
 ]
 
 campos_editaveis = campos_obrigatorios + campos_opcionais
 
 
 def calcular_apto(data: dict) -> bool:
-    sexo = data.get("sexoDoador", "").upper()
     ultima_doacao = data.get("dataUltimaDoacao")
+    if not ultima_doacao:
+        return True
 
+    sexo = data.get("sexoDoador", "").upper()
     intervalo = 60 if sexo == "H" else 90
     dias_desde_ultima = (date.today() - datetime.strptime(ultima_doacao, "%Y-%m-%d").date()).days
 
     return dias_desde_ultima >= intervalo
 
 
+def coagir_numericos(data: dict, erros_422: list):
+    """Converte campos numéricos enviados como string para float (comportamento do Angular)."""
+    for campo in campos_numericos:
+        valor = data.get(campo)
+        if valor is None:
+            continue
+        if isinstance(valor, str):
+            if valor.strip() == '':
+                data[campo] = None
+            else:
+                try:
+                    data[campo] = float(valor)
+                except ValueError:
+                    erros_422.append(f"{campo} deve ser um número")
+        elif not isinstance(valor, (int, float)):
+            erros_422.append(f"{campo} deve ser um número")
+
+
+def _somente_digitos(cpf: str) -> str:
+    return re.sub(r'\D', '', cpf or '')
+
+
 def validar_doador(data: dict, doadores: list = []) -> tuple[dict, list, list]:
     erros_400 = []
     erros_422 = []
+
+    coagir_numericos(data, erros_422)
 
     for campo in campos_obrigatorios:
         valor = data.get(campo)
         if not valor:
             erros_400.append(campo)
 
-    if any(d['cpfDoador'] == data.get('cpfDoador') for d in doadores):
+    cpf_novo = _somente_digitos(data.get('cpfDoador', ''))
+    if cpf_novo and any(_somente_digitos(d.get('cpfDoador', '')) == cpf_novo for d in doadores):
         erros_422.append("cpfDoador já cadastrado")
 
     for campo in campos_string:
@@ -94,18 +120,13 @@ def validar_doador(data: dict, doadores: list = []) -> tuple[dict, list, list]:
         if sexo.upper() not in ["H", "M"]:
             erros_422.append("sexoDoador deve ser 'H' para homem ou 'M' para mulher")
 
-    for campo in campos_numericos:
-        valor = data.get(campo)
-        if valor is not None and not isinstance(valor, (int, float)):
-            erros_422.append(f"{campo} deve ser um número")
-
     for campo in campos_opcionais:
         data.setdefault(campo, None)
 
     return data, erros_400, erros_422
 
 
-def validar_atualizacao_doador(data: dict) -> tuple[dict, list, list]:
+def validar_atualizacao_doador(data: dict, doadores: list = [], id_atual: str = '') -> tuple[dict, list, list]:
     erros_400 = []
     erros_422 = []
 
@@ -115,6 +136,16 @@ def validar_atualizacao_doador(data: dict) -> tuple[dict, list, list]:
     campos_invalidos = [c for c in data if c not in campos_editaveis]
     if campos_invalidos:
         erros_400.extend(campos_invalidos)
+
+    if 'cpfDoador' in data:
+        cpf_novo = _somente_digitos(data.get('cpfDoador', ''))
+        if cpf_novo and any(
+            _somente_digitos(d.get('cpfDoador', '')) == cpf_novo and d.get('id') != id_atual
+            for d in doadores
+        ):
+            erros_422.append("cpfDoador já cadastrado por outro doador")
+
+    coagir_numericos(data, erros_422)
 
     for campo in campos_string:
         valor = data.get(campo)
@@ -128,11 +159,6 @@ def validar_atualizacao_doador(data: dict) -> tuple[dict, list, list]:
     sexo = data.get("sexoDoador")
     if isinstance(sexo, str) and sexo and sexo.upper() not in ["H", "M"]:
         erros_422.append("sexoDoador deve ser 'H' para homem ou 'M' para mulher")
-
-    for campo in campos_numericos:
-        valor = data.get(campo)
-        if valor is not None and not isinstance(valor, (int, float)):
-            erros_422.append(f"{campo} deve ser um número")
 
     return data, erros_400, erros_422
 
@@ -154,6 +180,7 @@ def get_doadores(id=None):
 
     sexo        = request.args.get('sexoDoador')
     tipo_sangue = request.args.get('tipoSangue')
+    fator_rh    = request.args.get('fatorRh')
     apto        = request.args.get('aptoParaDoacao')
 
     resultado = []
@@ -162,6 +189,8 @@ def get_doadores(id=None):
         if sexo        and doador.get('sexoDoador') != sexo:
             continue
         if tipo_sangue and doador.get('tipoSangue') != tipo_sangue:
+            continue
+        if fator_rh    and doador.get('fatorRh') != fator_rh:
             continue
         if apto is not None:
             apto_bool = apto.lower() == 'true'
@@ -180,7 +209,7 @@ def atualizar(id):
     if not dados:
         return jsonify({"erro": "Body da requisição inválido ou ausente"}), 400
 
-    dados, erros_400, erros_422 = validar_atualizacao_doador(dados)
+    dados, erros_400, erros_422 = validar_atualizacao_doador(dados, doadores, id)
     if erros_400:
         return jsonify({
             "erro": "Campos não permitidos",
@@ -217,8 +246,11 @@ def deletar(id):
 
 @doadores_bp.post("/doadores")
 def add_doador():
-    novo_doador = request.json
+    novo_doador = request.get_json(force=True, silent=True)
+    if not novo_doador:
+        return jsonify({"erro": "Body da requisição inválido ou ausente"}), 400
     novo_doador['id'] = str(uuid.uuid4())
+    novo_doador['cadastrado'] = True
 
     doadores = ler_json('doadores')
 

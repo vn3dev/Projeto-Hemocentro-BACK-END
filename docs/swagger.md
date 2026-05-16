@@ -52,15 +52,15 @@ Representa um doador de sangue cadastrado no sistema.
 | `dataNascimentoDoador` | string | Sim | Formato `YYYY-MM-DD` |
 | `tipoSangue` | string | Sim | Ex.: `"A"`, `"B"`, `"AB"`, `"O"` |
 | `fatorRh` | string | Sim | `"+"` ou `"-"` |
-| `dataUltimaDoacao` | string | Sim | Formato `YYYY-MM-DD` |
-| `quantidadeDoada` | integer | Sim | Quantidade em ml (número positivo) |
-| `localDoacao` | string | Sim | Nome do local da última doação |
+| `dataUltimaDoacao` | string \| null | Não | Formato `YYYY-MM-DD`; `null` se nunca doou |
+| `quantidadeDoada` | integer \| null | Não | Quantidade em ml (número positivo); `null` se nunca doou |
+| `localDoacao` | string \| null | Não | Nome do local da última doação; `null` se nunca doou |
 | `hemoglobinaDoador` | float | Sim | Nível de hemoglobina em g/dL |
 | `pressaoArterialDoador` | string | Sim | Formato `"###/##"` (ex.: `"120/80"`) |
 | `alergiasDoador` | string \| null | Não | `null` se não informado |
 | `medicamentosDoador` | string \| null | Não | `null` se não informado |
 | `observacoes` | string \| null | Não | `null` se não informado |
-| `cadastrado` | boolean | Sim | Status de cadastro |
+| `cadastrado` | boolean | — | **Definido automaticamente** pelo servidor como `true` |
 | `aptoParaDoacao` | boolean | — | **Calculado automaticamente** pelo servidor |
 
 #### Regra de Aptidão para Doação
@@ -72,7 +72,9 @@ O campo `aptoParaDoacao` **não é enviado pelo cliente** — é sempre calculad
 | Homem (`"H"`) | 60 dias |
 | Mulher (`"M"`) | 90 dias |
 
-O valor é recalculado a cada `POST` e `PUT`.
+Se `dataUltimaDoacao` for `null` (doador nunca doou), `aptoParaDoacao` é automaticamente `true`.
+
+O valor é recalculado a cada `POST` e `PUT`. Também é recalculado automaticamente quando uma bolsa é registrada via `POST /bolsas` para o doador correspondente.
 
 ---
 
@@ -123,6 +125,7 @@ Lista todos os doadores cadastrados. Suporta filtragem opcional por query params
 |-------|------|-----------------|---------|
 | `sexoDoador` | string | `H`, `M` | `?sexoDoador=H` |
 | `tipoSangue` | string | `A`, `B`, `AB`, `O` | `?tipoSangue=O` |
+| `fatorRh` | string | `+`, `-` | `?fatorRh=%2B` |
 | `aptoParaDoacao` | boolean | `true`, `false` | `?aptoParaDoacao=true` |
 
 **Response `200 OK`:**
@@ -180,7 +183,7 @@ Busca um doador específico pelo UUID.
 
 #### `POST /doadores`
 
-Cadastra um novo doador. Os campos `id` e `aptoParaDoacao` são gerados pelo servidor e não devem ser enviados.
+Cadastra um novo doador. Os campos `id`, `cadastrado` e `aptoParaDoacao` são definidos pelo servidor e não devem ser enviados.
 
 **Request body:**
 ```json
@@ -196,19 +199,22 @@ Cadastra um novo doador. Os campos `id` e `aptoParaDoacao` são gerados pelo ser
     "dataNascimentoDoador": "2000-01-15",
     "tipoSangue": "O",
     "fatorRh": "+",
-    "dataUltimaDoacao": "2024-06-01",
-    "quantidadeDoada": 500,
-    "localDoacao": "UCT Toledo",
     "hemoglobinaDoador": 15.2,
     "pressaoArterialDoador": "120/80",
-    "cadastrado": true,
+    "dataUltimaDoacao": null,
+    "quantidadeDoada": null,
+    "localDoacao": null,
     "alergiasDoador": null,
     "medicamentosDoador": null,
     "observacoes": null
 }
 ```
 
-**Response `201 Created`:** objeto completo com `id` (UUID gerado) e `aptoParaDoacao` calculado.
+> **Nota:** campos numéricos (`pesoDoador`, `alturaDoador`, `hemoglobinaDoador`, `quantidadeDoada`) podem ser enviados como string numérica — o servidor realiza a coerção automaticamente (ex.: `"85.5"` → `85.5`).
+
+> **Nota CPF:** a verificação de duplicidade ignora formatação — `"123.456.789-00"` e `"12345678900"` são tratados como o mesmo CPF.
+
+**Response `201 Created`:** objeto completo com `id` (UUID gerado), `cadastrado: true` e `aptoParaDoacao` calculado.
 
 **Response `400 Bad Request` — campos obrigatórios ausentes:**
 ```json
@@ -235,8 +241,9 @@ Cadastra um novo doador. Os campos `id` e `aptoParaDoacao` são gerados pelo ser
 |-------|-------|
 | `nomeDoador` | Apenas letras e espaços (regex `^[A-Za-zÀ-ÖØ-öø-ÿ\s]+$`) |
 | `sexoDoador` | Deve ser exatamente `"H"` ou `"M"` |
-| `cpfDoador` | Não pode já existir no banco |
-| `pesoDoador`, `alturaDoador`, `hemoglobinaDoador`, `quantidadeDoada` | Devem ser números positivos |
+| `cpfDoador` | Não pode já existir no banco (comparação somente por dígitos) |
+| `pesoDoador`, `alturaDoador`, `hemoglobinaDoador` | Devem ser números positivos |
+| `quantidadeDoada` | Deve ser número positivo se informado |
 | Todos os campos obrigatórios | Não podem estar ausentes nem vazios |
 
 ---
@@ -264,7 +271,7 @@ Após a atualização, `aptoParaDoacao` é recalculado automaticamente.
 
 **Response `200 OK`:** objeto completo atualizado com novo `aptoParaDoacao`.
 
-**Response `400 Bad Request` — body vazio ou campo inexistente no schema:**
+**Response `400 Bad Request` — body vazio/inválido ou campo inexistente no schema:**
 ```json
 {
     "erro": "Campos inválidos",
@@ -279,7 +286,7 @@ Após a atualização, `aptoParaDoacao` é recalculado automaticamente.
 }
 ```
 
-**Response `422 Unprocessable Entity`:** mesmo formato do POST.
+**Response `422 Unprocessable Entity`:** mesmo formato do POST. A verificação de `cpfDoador` duplicado exclui o próprio doador sendo editado.
 
 ---
 
@@ -393,6 +400,8 @@ Registra uma nova bolsa de sangue. Os campos `id` e `data_validade` são calcula
 }
 ```
 
+> **Efeito colateral:** ao registrar uma bolsa, o servidor atualiza automaticamente `dataUltimaDoacao` e `aptoParaDoacao` do doador referenciado em `id_doador`, caso a `data_coleta` seja mais recente que a última doação registrada.
+
 **Response `400 Bad Request` — campos obrigatórios ausentes:**
 ```json
 {
@@ -491,13 +500,68 @@ Remove uma bolsa do estoque pelo ID.
 
 ---
 
-### Sangue *(não implementado)*
+### Visão Geral
 
-> O blueprint `sangue` está registrado em `api.py`, mas o arquivo `routes/sangue.py` ainda não existe. A aplicação **não iniciará** enquanto essa rota estiver importada e o arquivo estiver ausente.
+---
 
-| Endpoint | Descrição |
-|----------|-----------|
-| `GET /sangue/listar` | Retornará o resumo do estoque por tipo sanguíneo |
+#### `GET /visao-geral`
+
+Retorna um painel consolidado com estatísticas do banco de sangue, agrupadas por tipo sanguíneo e em totais gerais, além dos últimos registros inseridos.
+
+**Response `200 OK`:**
+```json
+{
+    "por_tipo": [
+        {
+            "tipo_sangue": "A+",
+            "total_doadores": 10,
+            "doadores_aptos": 6,
+            "total_bolsas": 8,
+            "bolsas_validas": 5,
+            "total_ml_valido": 2250
+        }
+    ],
+    "totais": {
+        "total_doadores": 42,
+        "doadores_aptos": 28,
+        "total_bolsas": 35,
+        "bolsas_validas": 20,
+        "total_ml_valido": 9800
+    },
+    "ultimos_doadores": [
+        {
+            "id": "ace0e2ab-...",
+            "nomeDoador": "Lord Kainan senhor das sombras",
+            "tipoSangue": "O",
+            "fatorRh": "+",
+            "sexoDoador": "H",
+            "aptoParaDoacao": true,
+            "dataUltimaDoacao": "2024-06-01"
+        }
+    ],
+    "ultimas_bolsas": [
+        {
+            "id": "82427272-...",
+            "tipo_sangue": "O-",
+            "quantidade_ml": 500,
+            "data_coleta": "2026-03-22",
+            "data_validade": "2026-05-03",
+            "solucao_conservante": "AS-1"
+        }
+    ]
+}
+```
+
+**Detalhes dos campos:**
+
+| Campo | Descrição |
+|-------|-----------|
+| `por_tipo` | Array com um objeto para cada um dos 8 tipos sanguíneos (`A+`, `A-`, `B+`, `B-`, `AB+`, `AB-`, `O+`, `O-`) |
+| `por_tipo[].bolsas_validas` | Bolsas com `data_validade >= hoje` |
+| `por_tipo[].total_ml_valido` | Soma de `quantidade_ml` das bolsas válidas |
+| `totais` | Contadores globais (todos os tipos combinados) |
+| `ultimos_doadores` | Os 5 doadores mais recentes (ordem decrescente de inserção) |
+| `ultimas_bolsas` | As 5 bolsas mais recentes (ordem decrescente de inserção) |
 
 ---
 
@@ -515,7 +579,7 @@ Remove uma bolsa do estoque pelo ID.
 | POST | `/bolsas` | Registra uma nova bolsa |
 | PUT | `/bolsas/<id>` | Atualiza parcialmente uma bolsa |
 | DELETE | `/bolsas/<id>` | Remove uma bolsa |
-| GET | `/sangue/listar` | *(pendente)* Resumo do estoque por tipo |
+| GET | `/visao-geral` | Painel consolidado com estatísticas e últimos registros |
 
 ---
 
@@ -528,11 +592,11 @@ Projeto-Hemocentro-BACK-END/
 ├── routes/
 │   ├── doadores.py      # Rotas e lógica de negócio de doadores
 │   ├── bolsas.py        # Rotas e lógica de negócio de bolsas
-│   └── sangue.py        # (pendente) Rotas de resumo de estoque
+│   └── visao_geral.py   # Painel consolidado de estatísticas
 ├── data/
 │   ├── doadores.json    # Banco de dados de doadores
 │   └── bolsas.json      # Banco de dados de bolsas
 └── docs/
     ├── swagger.md       # Esta documentação
-    └── table_rotas.md   # Tabela de referência rápida de rotas
+    └── cheatsheet.md    # Referência rápida de rotas e campos
 ```

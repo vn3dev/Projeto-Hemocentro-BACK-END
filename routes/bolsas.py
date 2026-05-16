@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from openwith import ler_json, salvar_json
+from routes.doadores import calcular_apto
 from datetime import datetime, timedelta, date
 import uuid
 
@@ -200,7 +201,10 @@ def deletar(id):
 
 @bolsas_bp.post("/bolsas")
 def add_bolsa():
-    nova_bolsa = request.json
+    nova_bolsa = request.get_json(force=True, silent=True)
+    if not nova_bolsa:
+        return jsonify({"erro": "Body da requisição inválido ou ausente"}), 400
+
     nova_bolsa['id'] = str(uuid.uuid4())
 
     nova_bolsa, erros_400, erros_422 = validar_bolsa(nova_bolsa)
@@ -223,4 +227,19 @@ def add_bolsa():
     bolsas.append(nova_bolsa)
     salvar_json('bolsas', bolsas)
 
+    _atualizar_doador_apos_doacao(nova_bolsa['id_doador'], nova_bolsa['data_coleta'])
+
     return jsonify(nova_bolsa), 201
+
+
+def _atualizar_doador_apos_doacao(id_doador: str, data_coleta: str):
+    doadores = ler_json('doadores')
+    for doador in doadores:
+        if doador.get('id') != id_doador:
+            continue
+        ultima = doador.get('dataUltimaDoacao')
+        if not ultima or data_coleta >= ultima:
+            doador['dataUltimaDoacao'] = data_coleta
+            doador['aptoParaDoacao'] = calcular_apto(doador)
+            salvar_json('doadores', doadores)
+        break

@@ -1,7 +1,7 @@
 from flask import Flask
 from routes.doadores import doadores_bp
 from routes.bolsas import bolsas_bp
-from routes.sangue import sangue_bp
+from routes.visao_geral import visao_geral_bp
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -13,6 +13,6 @@ app.json.sort_keys = False
 # registra os blueprints
 app.register_blueprint(doadores_bp)
 app.register_blueprint(bolsas_bp)
-app.register_blueprint(sangue_bp)
+app.register_blueprint(visao_geral_bp)
 
 app.run(debug = True)
