@@ -57,7 +57,7 @@ campos_opcionais = [
 campos_editaveis = campos_obrigatorios + campos_opcionais
 
 
-def calcular_apto(data: dict) -> bool:
+def calcular_apto(data):
     ultima_doacao = data.get("dataUltimaDoacao")
     if not ultima_doacao:
         return True
@@ -69,7 +69,7 @@ def calcular_apto(data: dict) -> bool:
     return dias_desde_ultima >= intervalo
 
 
-def coagir_numericos(data: dict, erros_422: list):
+def coagir_numericos(data, erros_422):
     """Converte campos numéricos enviados como string para float (comportamento do Angular)."""
     for campo in campos_numericos:
         valor = data.get(campo)
@@ -87,11 +87,11 @@ def coagir_numericos(data: dict, erros_422: list):
             erros_422.append(f"{campo} deve ser um número")
 
 
-def _somente_digitos(cpf: str) -> str:
+def _somente_digitos(cpf):
     return re.sub(r'\D', '', cpf or '')
 
 
-def validar_doador(data: dict, doadores: list = []) -> tuple[dict, list, list]:
+def validar_doador(data, doadores=[]):
     erros_400 = []
     erros_422 = []
 
@@ -126,7 +126,7 @@ def validar_doador(data: dict, doadores: list = []) -> tuple[dict, list, list]:
     return data, erros_400, erros_422
 
 
-def validar_atualizacao_doador(data: dict, doadores: list = [], id_atual: str = '') -> tuple[dict, list, list]:
+def validar_atualizacao_doador(data, doadores=[], id_atual=''):
     erros_400 = []
     erros_422 = []
 

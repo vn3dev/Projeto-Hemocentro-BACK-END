@@ -232,7 +232,7 @@ def add_bolsa():
     return jsonify(nova_bolsa), 201
 
 
-def _atualizar_doador_apos_doacao(id_doador: str, data_coleta: str):
+def _atualizar_doador_apos_doacao(id_doador, data_coleta):
     doadores = ler_json('doadores')
     for doador in doadores:
         if doador.get('id') != id_doador:
