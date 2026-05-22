@@ -61,5 +61,14 @@
         "id_doador": "ad128eca-7947-4f55-8a3c-70c75fed4ae5",
         "id": "7b682c5e-3f95-4729-9370-8725f16703a6",
         "data_validade": "2026-06-07"
+    },
+    {
+        "tipo_sangue": "A+",
+        "quantidade_ml": 1000,
+        "data_coleta": "2026-05-15",
+        "solucao_conservante": "AS-1",
+        "id_doador": "c367eb54-7cbd-462c-8dc9-26d9252efb31",
+        "id": "db38b7b3-9632-41cd-85b9-c21fff3b4a3e",
+        "data_validade": "2026-06-26"
     }
 ]
