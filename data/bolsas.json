@@ -5,6 +5,7 @@
         "data_coleta": "2026-05-15",
         "solucao_conservante": "AS-1",
         "id_doador": "c367eb54-7cbd-462c-8dc9-26d9252efb31",
+        "observacoes": null,
         "id": "e45efb33-2cb6-489a-8284-7d448aae726e",
         "data_validade": "2026-06-26"
     },
@@ -14,6 +15,7 @@
         "data_coleta": "2026-05-16",
         "solucao_conservante": "ACD",
         "id_doador": "d19fe2cf-a6b6-4664-8e83-82d506f339d0",
+        "observacoes": null,
         "id": "ce5107ef-b182-45a7-b503-d96a33b38cd7",
         "data_validade": "2026-06-06"
     },
@@ -23,6 +25,7 @@
         "data_coleta": "2026-04-20",
         "solucao_conservante": "AS-5",
         "id_doador": "c9661bc2-62ca-49ed-9616-d82549764445",
+        "observacoes": null,
         "id": "399f9f5b-a990-4dfe-8520-9abeb80c7bf3",
         "data_validade": "2026-06-01"
     },
@@ -32,6 +35,7 @@
         "data_coleta": "2026-04-25",
         "solucao_conservante": "AS-3",
         "id_doador": "75a43677-a1ec-4cf7-a6fe-39f8722433a4",
+        "observacoes": null,
         "id": "107b133a-0362-4d9c-896b-e1a9bbe1faa5",
         "data_validade": "2026-06-06"
     },
@@ -41,6 +45,7 @@
         "data_coleta": "2026-04-30",
         "solucao_conservante": "CPDA-1",
         "id_doador": "1c625a5a-3d4d-4aab-9696-6ae588a45629",
+        "observacoes": null,
         "id": "f50575bd-431b-4c54-bcc5-2eaee345c8ed",
         "data_validade": "2026-06-04"
     },
@@ -50,6 +55,7 @@
         "data_coleta": "2025-11-03",
         "solucao_conservante": "AS-5",
         "id_doador": "f24b0a22-57c6-4b4c-982b-42f760c91452",
+        "observacoes": null,
         "id": "05e7d90f-3df1-4c1f-a379-9d0638dedb91",
         "data_validade": "2025-12-15"
     },
@@ -59,6 +65,7 @@
         "data_coleta": "2026-05-03",
         "solucao_conservante": "CPDA-1",
         "id_doador": "ad128eca-7947-4f55-8a3c-70c75fed4ae5",
+        "observacoes": null,
         "id": "7b682c5e-3f95-4729-9370-8725f16703a6",
         "data_validade": "2026-06-07"
     },
@@ -68,6 +75,7 @@
         "data_coleta": "2026-05-15",
         "solucao_conservante": "AS-1",
         "id_doador": "c367eb54-7cbd-462c-8dc9-26d9252efb31",
+        "observacoes": null,
         "id": "db38b7b3-9632-41cd-85b9-c21fff3b4a3e",
         "data_validade": "2026-06-26"
     }

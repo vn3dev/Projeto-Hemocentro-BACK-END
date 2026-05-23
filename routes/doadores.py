@@ -1,7 +1,6 @@
 from flask import Blueprint, jsonify, request
 from openwith import ler_json, salvar_json
 from datetime import date, datetime
-import re
 import uuid
 
 doadores_bp = Blueprint('doadores', __name__)
@@ -18,8 +17,6 @@ campos_obrigatorios = [
     "dataNascimentoDoador",
     "tipoSangue",
     "fatorRh",
-    "hemoglobinaDoador",
-    "pressaoArterialDoador",
 ]
 
 campos_string = [
@@ -33,16 +30,14 @@ campos_string = [
     "tipoSangue",
     "fatorRh",
     "dataUltimaDoacao",
-    "localDoacao",
-    "pressaoArterialDoador",
-    "observacoes"
+    "observacoes",
+    "alergiasDoador",
+    "medicamentosDoador",
 ]
 
 campos_numericos = [
     "pesoDoador",
     "alturaDoador",
-    "quantidadeDoada",
-    "hemoglobinaDoador"
 ]
 
 campos_opcionais = [
@@ -50,27 +45,51 @@ campos_opcionais = [
     "medicamentosDoador",
     "observacoes",
     "dataUltimaDoacao",
-    "quantidadeDoada",
-    "localDoacao",
 ]
 
 campos_editaveis = campos_obrigatorios + campos_opcionais
 
+def validar_tamanho(data, erros_422):
+    nome_doador = data.get("nomeDoador")
+    if isinstance(nome_doador, str) and len(nome_doador) > 100:
+        erros_422.append("nomeDoador deve conter no máximo 100 caracteres")
 
-def calcular_apto(data):
-    ultima_doacao = data.get("dataUltimaDoacao")
-    if not ultima_doacao:
-        return True
+    cidade = data.get("cidadeDoador")
+    if isinstance(cidade, str) and len(cidade) > 50:
+        erros_422.append("cidadeDoador deve conter no máximo 50 caracteres")
 
-    sexo = data.get("sexoDoador", "").upper()
-    intervalo = 60 if sexo == "H" else 90
-    dias_desde_ultima = (date.today() - datetime.strptime(ultima_doacao, "%Y-%m-%d").date()).days
+    uf = data.get("EstadoDoador")
+    if isinstance(uf, str) and len(uf) != 2:
+        erros_422.append("EstadoDoador deve conter exatamente 2 caracteres")
 
-    return dias_desde_ultima >= intervalo
+    telefone = data.get("telefoneDoador")
+    if isinstance(telefone, str) and len(telefone) > 25:
+        erros_422.append("telefoneDoador deve conter no máximo 25 caracteres")
+
+    peso_doador = data.get("pesoDoador")
+    if peso_doador is not None:
+        if peso_doador <= 0 or peso_doador > 300:
+            erros_422.append("pesoDoador deve estar entre 1 e 300 kg")
+
+    altura_doador = data.get("alturaDoador")
+    if altura_doador is not None:
+        if altura_doador <= 0 or altura_doador > 2.5:
+            erros_422.append("alturaDoador deve estar entre 0.1 e 2.5 metros")
+
+    observacoes = data.get("observacoes")
+    if observacoes is not None and len(observacoes) > 500:
+        erros_422.append("observacoes deve conter no máximo 500 caracteres")
+
+    alergias = data.get("alergiasDoador")
+    if alergias is not None and len(alergias) > 500:
+        erros_422.append("alergiasDoador deve conter no máximo 500 caracteres")
+    
+    medicamentos = data.get("medicamentosDoador")
+    if medicamentos is not None and len(medicamentos) > 500:
+        erros_422.append("medicamentosDoador deve conter no máximo 500 caracteres")
 
 
-def coagir_numericos(data, erros_422):
-    """Converte campos numéricos enviados como string para float (comportamento do Angular)."""
+def validar_numericos(data, erros_422):
     for campo in campos_numericos:
         valor = data.get(campo)
         if valor is None:
@@ -87,38 +106,42 @@ def coagir_numericos(data, erros_422):
             erros_422.append(f"{campo} deve ser um número")
 
 
-def _somente_digitos(cpf):
-    return re.sub(r'\D', '', cpf or '')
+def somente_digitos(cpf):
+    return ''.join(caractere for caractere in (cpf or '') if caractere.isdigit())
 
 
-def validar_doador(data, doadores=[]):
+def validar_doador(data, doadores=None):
+    if doadores is None:
+        doadores = []
     erros_400 = []
     erros_422 = []
 
-    coagir_numericos(data, erros_422)
+    validar_numericos(data, erros_422)
 
     for campo in campos_obrigatorios:
         valor = data.get(campo)
         if not valor:
             erros_400.append(campo)
 
-    cpf_novo = _somente_digitos(data.get('cpfDoador', ''))
-    if cpf_novo and any(_somente_digitos(d.get('cpfDoador', '')) == cpf_novo for d in doadores):
-        erros_422.append("cpfDoador já cadastrado")
-
     for campo in campos_string:
         valor = data.get(campo)
         if valor is not None and not isinstance(valor, str):
             erros_422.append(f"{campo} deve ser uma string")
 
-    nome = data.get("nomeDoador")
-    if isinstance(nome, str) and nome and not re.match(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s]+$", nome):
-        erros_422.append("nomeDoador não deve conter números ou caracteres especiais")
+    validar_tamanho(data, erros_422)
+
+    cpf_novo = somente_digitos(data.get('cpfDoador', ''))
+    if len(cpf_novo) > 11:
+        erros_422.append("cpfDoador deve conter no máximo 11 dígitos")
+    if cpf_novo and any(somente_digitos(doador.get('cpfDoador', '')) == cpf_novo for doador in doadores):
+        erros_422.append("cpfDoador já cadastrado")
 
     sexo = data.get("sexoDoador")
     if isinstance(sexo, str) and sexo:
-        if sexo.upper() not in ["H", "M"]:
-            erros_422.append("sexoDoador deve ser 'H' para homem ou 'M' para mulher")
+        if sexo.upper() not in ["M", "F"]:
+            erros_422.append("sexoDoador deve ser 'M' para masculino ou 'F' para feminino")
+        else:
+            data["sexoDoador"] = sexo.upper()
 
     for campo in campos_opcionais:
         data.setdefault(campo, None)
@@ -126,41 +149,56 @@ def validar_doador(data, doadores=[]):
     return data, erros_400, erros_422
 
 
-def validar_atualizacao_doador(data, doadores=[], id_atual=''):
+def validar_atualizacao_doador(data, doadores=None, id_atual=''):
+    if doadores is None:
+        doadores = []
     erros_400 = []
     erros_422 = []
 
     for campo in ["id", "aptoParaDoacao"]:
         data.pop(campo, None)
 
-    campos_invalidos = [c for c in data if c not in campos_editaveis]
+    campos_invalidos = [campo for campo in data if campo not in campos_editaveis]
     if campos_invalidos:
         erros_400.extend(campos_invalidos)
 
     if 'cpfDoador' in data:
-        cpf_novo = _somente_digitos(data.get('cpfDoador', ''))
+        cpf_novo = somente_digitos(data.get('cpfDoador', ''))
         if cpf_novo and any(
-            _somente_digitos(d.get('cpfDoador', '')) == cpf_novo and d.get('id') != id_atual
-            for d in doadores
+            somente_digitos(doador.get('cpfDoador', '')) == cpf_novo and doador.get('id') != id_atual
+            for doador in doadores
         ):
             erros_422.append("cpfDoador já cadastrado por outro doador")
 
-    coagir_numericos(data, erros_422)
+    validar_numericos(data, erros_422)
 
     for campo in campos_string:
         valor = data.get(campo)
         if valor is not None and not isinstance(valor, str):
             erros_422.append(f"{campo} deve ser uma string")
 
-    nome = data.get("nomeDoador")
-    if isinstance(nome, str) and nome and not re.match(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s]+$", nome):
-        erros_422.append("nomeDoador não deve conter números ou caracteres especiais")
+    validar_tamanho(data, erros_422)
 
     sexo = data.get("sexoDoador")
-    if isinstance(sexo, str) and sexo and sexo.upper() not in ["H", "M"]:
-        erros_422.append("sexoDoador deve ser 'H' para homem ou 'M' para mulher")
+    if isinstance(sexo, str) and sexo:
+        if sexo.upper() not in ["M", "F"]:
+            erros_422.append("sexoDoador deve ser 'M' para masculino ou 'F' para feminino")
+        else:
+            data["sexoDoador"] = sexo.upper()
 
     return data, erros_400, erros_422
+
+
+def calcular_apto(data):
+    ultima_doacao = data.get("dataUltimaDoacao")
+    if not ultima_doacao:
+        return True
+
+    sexo = data.get("sexoDoador", "").upper()
+    intervalo = 60 if sexo == "M" else 90
+    dias_desde_ultima = (date.today() - datetime.strptime(ultima_doacao, "%Y-%m-%d").date()).days
+
+    return dias_desde_ultima >= intervalo
 
 
 @doadores_bp.get("/doadores/<id>")
@@ -175,7 +213,7 @@ def get_doador(id):
 
 
 @doadores_bp.get("/doadores")
-def get_doadores(id=None):
+def get_doadores():
     doadores = ler_json('doadores')
 
     sexo        = request.args.get('sexoDoador')

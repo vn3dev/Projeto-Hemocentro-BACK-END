@@ -28,12 +28,15 @@ campos_obrigatorios = [
 campos_string = [
     "tipo_sangue",
     "data_coleta",
-    "solucao_conservante"
+    "solucao_conservante",
+    "observacoes"
 ]
 
 campos_numericos = ["quantidade_ml"]
 
-campos_editaveis = campos_obrigatorios
+campos_opcionais = ["observacoes"]
+
+campos_editaveis = campos_obrigatorios + campos_opcionais
 
 
 def validar_bolsa(bolsa):
@@ -58,8 +61,15 @@ def validar_bolsa(bolsa):
             erros_422.append(f"{campo} deve ser um número")
 
     quantidade = bolsa.get("quantidade_ml")
-    if isinstance(quantidade, (int, float)) and quantidade <= 0 and not None:
+    if isinstance(quantidade, (int, float)) and quantidade <= 0:
         erros_422.append("quantidade_ml deve ser um número positivo")
+
+    for campo in campos_opcionais:
+        bolsa.setdefault(campo, None)
+
+    observacoes = bolsa.get("observacoes")
+    if observacoes is not None and len(observacoes) > 500:
+        erros_422.append("observacoes deve conter no máximo 500 caracteres")
 
     return bolsa, erros_400, erros_422
 
@@ -71,7 +81,7 @@ def validar_atualizacao_bolsa(bolsa):
     for campo in ["id", "data_validade"]:
         bolsa.pop(campo, None)
 
-    campos_invalidos = [c for c in bolsa if c not in campos_editaveis]
+    campos_invalidos = [campo for campo in bolsa if campo not in campos_editaveis]
     if campos_invalidos:
         erros_400.extend(campos_invalidos)
 
@@ -227,12 +237,12 @@ def add_bolsa():
     bolsas.append(nova_bolsa)
     salvar_json('bolsas', bolsas)
 
-    _atualizar_doador_apos_doacao(nova_bolsa['id_doador'], nova_bolsa['data_coleta'])
+    atualizar_doador_apos_doacao(nova_bolsa['id_doador'], nova_bolsa['data_coleta'])
 
     return jsonify(nova_bolsa), 201
 
 
-def _atualizar_doador_apos_doacao(id_doador, data_coleta):
+def atualizar_doador_apos_doacao(id_doador, data_coleta):
     doadores = ler_json('doadores')
     for doador in doadores:
         if doador.get('id') != id_doador:
