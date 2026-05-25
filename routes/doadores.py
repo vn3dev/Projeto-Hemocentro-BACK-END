@@ -295,7 +295,7 @@ def add_doador():
     novo_doador, erros_400, erros_422 = validar_doador(novo_doador, doadores)
     if erros_400:
         return jsonify({
-            "erro": "Campos obrigatorios faltando",
+            "erro": "Campos obrigatórios faltando",
             "campos": erros_400
         }), 400
     if erros_422:

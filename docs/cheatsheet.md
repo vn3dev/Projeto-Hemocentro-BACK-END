@@ -20,7 +20,6 @@
 | POST | `/bolsas` | Cria bolsa |
 | PUT | `/bolsas/<id>` | Atualiza bolsa (parcial) |
 | DELETE | `/bolsas/<id>` | Remove bolsa |
-| GET | `/visao-geral` | Painel consolidado de estatísticas |
 
 ---
 
@@ -28,7 +27,7 @@
 
 | Rota | Param | Exemplo |
 |------|-------|---------|
-| GET `/doadores` | `sexoDoador` | `?sexoDoador=H` |
+| GET `/doadores` | `sexoDoador` | `?sexoDoador=M` |
 | GET `/doadores` | `tipoSangue` | `?tipoSangue=O` |
 | GET `/doadores` | `fatorRh` | `?fatorRh=%2B` |
 | GET `/doadores` | `aptoParaDoacao` | `?aptoParaDoacao=true` |
@@ -41,25 +40,21 @@
 
 | Campo | Tipo | Obrigatório | Restrição |
 |-------|------|:-----------:|-----------|
-| `nomeDoador` | string | Sim | Só letras e espaços |
-| `cpfDoador` | string | Sim | Único no banco |
-| `telefoneDoador` | string | Sim | — |
-| `sexoDoador` | string | Sim | `"H"` ou `"M"` |
-| `cidadeDoador` | string | Sim | — |
-| `EstadoDoador` | string | Sim | Sigla (ex.: `"SP"`) |
-| `pesoDoador` | float | Sim | Positivo, em kg |
-| `alturaDoador` | float | Sim | Positivo, em metros |
+| `nomeDoador` | string | Sim | Máximo 100 caracteres |
+| `cpfDoador` | string | Sim | Único no banco; máximo 11 dígitos |
+| `telefoneDoador` | string | Sim | Máximo 25 caracteres |
+| `sexoDoador` | string | Sim | `"M"` (Masculino) ou `"F"` (Feminino) |
+| `cidadeDoador` | string | Sim | Máximo 50 caracteres |
+| `EstadoDoador` | string | Sim | Exatamente 2 caracteres (ex.: `"SP"`) |
+| `pesoDoador` | float | Sim | Entre 1 e 300 kg |
+| `alturaDoador` | float | Sim | Entre 0.1 e 2.5 metros |
 | `dataNascimentoDoador` | string | Sim | `YYYY-MM-DD` |
-| `tipoSangue` | string | Sim | `A`, `B`, `AB`, `O` |
+| `tipoSangue` | string | Sim | Ex.: `A`, `B`, `AB`, `O` |
 | `fatorRh` | string | Sim | `"+"` ou `"-"` |
-| `hemoglobinaDoador` | float | Sim | Positivo, em g/dL |
-| `pressaoArterialDoador` | string | Sim | `"120/80"` |
 | `dataUltimaDoacao` | string | Não | `YYYY-MM-DD`; `null` se nunca doou |
-| `quantidadeDoada` | integer | Não | Positivo, em ml |
-| `localDoacao` | string | Não | — |
-| `alergiasDoador` | string | Não | — |
-| `medicamentosDoador` | string | Não | — |
-| `observacoes` | string | Não | — |
+| `alergiasDoador` | string | Não | Máximo 500 caracteres |
+| `medicamentosDoador` | string | Não | Máximo 500 caracteres |
+| `observacoes` | string | Não | Máximo 500 caracteres |
 | `id` | — | — | Gerado pelo servidor |
 | `cadastrado` | — | — | Definido pelo servidor (`true`) |
 | `aptoParaDoacao` | — | — | Calculado pelo servidor |
@@ -80,29 +75,9 @@
 
 **Validade por solução:** ACD/CPD → 21d · CPDA-1 → 35d · AS-1/AS-3/AS-5 → 42d
 
-**Aptidão para doação:** Homem → 60 dias · Mulher → 90 dias desde a última doação · sem doação anterior → sempre apto
+**Aptidão para doação:** Masculino (`"M"`) → 60 dias · Feminino (`"F"`) → 90 dias desde a última doação · sem doação anterior → sempre apto
 
 > **POST /bolsas:** ao criar uma bolsa, o servidor atualiza automaticamente `dataUltimaDoacao` e `aptoParaDoacao` do doador referenciado.
-
----
-
-## GET /visao-geral
-
-Retorna um painel consolidado. Não aceita query params.
-
-**Campos da resposta:**
-
-| Campo | Descrição |
-|-------|-----------|
-| `por_tipo[]` | Estatísticas para cada um dos 8 tipos (`A+` … `O-`) |
-| `por_tipo[].total_doadores` | Doadores daquele tipo |
-| `por_tipo[].doadores_aptos` | Doadores aptos daquele tipo |
-| `por_tipo[].total_bolsas` | Total de bolsas daquele tipo |
-| `por_tipo[].bolsas_validas` | Bolsas dentro do prazo de validade |
-| `por_tipo[].total_ml_valido` | ml totais nas bolsas válidas |
-| `totais` | Mesmos campos acima para todos os tipos combinados |
-| `ultimos_doadores` | 5 doadores mais recentes (ordem decrescente) |
-| `ultimas_bolsas` | 5 bolsas mais recentes (ordem decrescente) |
 
 ---
 
